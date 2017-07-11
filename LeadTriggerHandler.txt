@@ -1,0 +1,51 @@
+public class LeadMergeHandler 
+{
+    public void afterInsert(List<Lead> leadLst) 
+        {   
+            mergeLeads(leadLst);
+        }    
+    
+    public void mergeLeads(List<Lead> leadLst) 
+      {
+         Map<String,Lead> leadEmailMap = new Map<String,Lead>();
+                
+                for (Lead l : leadLst) 
+                {
+                    if (l.email != null) 
+                        {
+                            leadEmailMap.put(l.email.toUpperCase(),l);
+                            system.debug(leadEmailMap);
+                        }
+            }       
+// Get the account contact relation ID, which is created when a contact is created on "Account1, Inc." 
+    List<Lead> masterLst = new List<Lead>([SELECT Id, Email,Company, Merged_Field_Data__c FROM Lead WHERE Email in: leadEmailMap.keySet() ORDER BY CreatedDate ASC]);
+    system.debug('masterLst :' + masterLst);
+    for(Lead l : masterLst)
+    {
+         // Merge accounts into master
+        Database.MergeResult res = Database.merge(masterLst[0], l, false);
+        system.debug('RESULT :' + res);
+        if (res.isSuccess()) 
+                {
+                    // Get the master ID from the result and validate it
+                    System.debug('Master record ID: ' + res.getId());
+                    System.assertEquals(masterLst[0].Id, res.getId());  
+                    
+                    // Get the IDs of the merged records and display them
+                     List<Id> mergedIds = res.getMergedRecordIds();
+                    System.debug('IDs of merged records: ' + mergedIds);  
+                }
+                
+        else 
+          {
+                for(Database.Error err : res.getErrors()) 
+                {
+                    // Write each error to the debug output
+                    System.debug(err.getMessage());
+                }
+          }
+        
+    
+  }
+}
+}
